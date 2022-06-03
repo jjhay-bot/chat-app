@@ -1,58 +1,64 @@
-import crypto from "crypto";
+import { PrismaClient, Prisma } from "@prisma/client";
+import { ApolloError, AuthenticationError } from "apollo-server";
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 
-const users = [
-  {
-    id: "111111",
-    firstName: "mukesh",
-    lastName: "kumar",
-    email: "mukesh@kumar.com",
-    password: "12345",
-  },
-  {
-    id: "222222",
-    firstName: "suresh",
-    lastName: "sharma",
-    email: "suresh@sharma.com",
-    password: "12346",
-  },
-];
-
-const Todos = [
-  {
-    title: "buy book",
-    by: "111111",
-  },
-  {
-    title: "write code",
-    by: "111111",
-  },
-  {
-    title: "record video",
-    by: "222222",
-  },
-];
+const prisma = new PrismaClient();
 
 const resolvers = {
-  Query: {
-    users: () => users,
-    user: (parent, { id }, { userLoggedIn }) => {
-      if (!userLoggedIn) throw new Error("you are not logged in");
-      return users.find((item) => item.id == id);
-    },
-  },
-  User: {
-    todos: (parent) => {
-      return Todos.filter((todo) => todo.by === parent.id);
-    },
-  },
+  Query: {},
+
   Mutation: {
-    createUser: (_, { userNew }) => {
-      const newUser = {
-        id: crypto.randomUUID(),
-        ...userNew,
-      };
-      users.push(newUser);
+    signupUser: async (_, { userNew }) => {
+      // By unique identifier
+      const user = await prisma.user.findUnique({
+        where: {
+          email: userNew.email,
+        },
+      });
+
+      if (user)
+        throw new AuthenticationError(
+          "User already exists with that email"
+        );
+
+      const hashedPassword = await bcrypt.hash(userNew.password, 10);
+
+      const newUser = await prisma.user.create({
+        data: {
+          ...userNew,
+          password: hashedPassword,
+        },
+      });
+
       return newUser;
+    },
+
+    signinUser: async (_, { userSignin }) => {
+      const user = await prisma.user.findUnique({
+        where: {
+          email: userSignin.email,
+        },
+      });
+
+      if (!user)
+        throw new AuthenticationError(
+          "User doesn't exists with that email"
+        );
+
+      const doMatch = await bcrypt.compare(userSignin.password, user.password);
+
+      if (!doMatch)
+        throw new AuthenticationError("email or password is invalid");
+
+      const token = jwt.sign(
+        {
+          userId: user.id,
+        },
+        process.env.JWT_SECRET
+      );
+
+      return { token };
     },
   },
 };
