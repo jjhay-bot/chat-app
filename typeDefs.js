@@ -17,14 +17,25 @@ const typeDefs = gql`
     email: String!
     password: String!
   }
+  
+  scalar Date
 
   type Token {
     token: String
   }
 
+  type Message{
+    id:ID!
+    text:      String!
+    receiverId: Int!
+    senderId: Int!
+    createdAt: Date!
+  }
+
   type Mutation {
     signupUser(userNew: UserInput!): User
     signinUser(userSignin: UserSigninInput!): Token
+    createMessage():Message
   }
 
   type User {
