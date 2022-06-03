@@ -3,7 +3,7 @@ import { gql } from "apollo-server";
 const typeDefs = gql`
   type Query {
     users: [User]
-     (receiveId: Int!): [Message]
+    messagesByUser(receiveId: Int!): [Message]
   }
 
   input UserInput {

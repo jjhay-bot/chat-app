@@ -27,6 +27,8 @@ const resolvers = {
       });
       return users;
     },
+
+    message
   },
 
   Mutation: {
