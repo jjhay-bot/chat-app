@@ -28,7 +28,28 @@ const resolvers = {
       return users;
     },
 
-    message
+    messagesByUser: async (_, { receiverId }, { authorization }) => {
+      const { userId } = JSON.parse(
+        atob(authorization.split(".")[1])
+      );
+
+      if (!userId) {
+        throw new ForbiddenError("You must be logged in.");
+      }
+
+      const messages = await prisma.message.findMany({
+        where: {
+          OR: [
+            { senderId: userId, receiverId: receiverId },
+            { senderId: receiverId, receiverId: userId },
+          ],
+        },
+        orderBy: {
+          createdAt: "asc",
+        },
+      });
+      return messages;
+    },
   },
 
   Mutation: {
@@ -80,30 +101,36 @@ const resolvers = {
       const token = jwt.sign(
         {
           userId: user.id,
-          device: ''
+          device: "",
         },
-        process.env.JWT_SECRET, { expiresIn: '1h' }
+        process.env.JWT_SECRET,
+        { expiresIn: "1h" }
       );
 
       return { token };
     },
 
-    createMessage:async (_,{receiverId,text},{authorization})=>{
+    createMessage: async (
+      _,
+      { receiverId, text },
+      { authorization }
+    ) => {
+      if (!authorization)
+        throw new ForbiddenError("You must be logged in");
 
-      if(!authorization) throw new ForbiddenError("You must be logged in")
+      const { userId } = JSON.parse(
+        atob(authorization.split(".")[1])
+      );
 
-      const {userId} =JSON.parse(atob(authorization.split('.')[1]));
-
-      const message =  await prisma.message.create({
-        data:{
+      const message = await prisma.message.create({
+        data: {
           text,
           receiverId,
-          senderId:userId
-        }
-        
-      })
+          senderId: userId,
+        },
+      });
 
-      return message
+      return message;
     },
   },
 };
