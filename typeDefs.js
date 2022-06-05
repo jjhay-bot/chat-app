@@ -19,7 +19,7 @@ const typeDefs = gql`
   }
 
   type Token {
-    token: String
+    token: String!
   }
 
   scalar Date

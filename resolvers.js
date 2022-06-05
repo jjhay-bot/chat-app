@@ -12,52 +12,35 @@ const MESSAGE_ADDED = "MESSAGE_ADDED";
 
 const resolvers = {
   Query: {
-    users: async (_, args, { authorization }) => {
-      const { userId } = JSON.parse(
-        atob(authorization.split(".")[1])
-      );
-
-      if (!userId) {
-        throw new ForbiddenError("You must be logged in.");
-      }
-
-      const users = await prisma.user.findMany({
-        orderBy: {
-          createdAt: "desc",
+    users:async (_,args,{userId})=>{
+      if(!userId) throw new ForbiddenError("You must be logged in")
+      const users =  await prisma.user.findMany({
+        orderBy:{
+          createdAt:"desc"
         },
-        where: {
-          id: {
-            not: userId,
-          },
-        },
-      });
-
-      return users;
+        where:{
+          id:{
+            not:userId
+          }
+        }
+      })
+      return users
     },
-
-    messagesByUser: async (_, { receiverId }, { authorization }) => {
-      const { userId } = JSON.parse(
-        atob(authorization.split(".")[1])
-      );
-
-      if (!userId) {
-        throw new ForbiddenError("You must be logged in.");
-      }
-
-      const messages = await prisma.message.findMany({
-        where: {
-          OR: [
-            { senderId: userId, receiverId: receiverId },
-            { senderId: receiverId, receiverId: userId },
-          ],
+    messagesByUser:async (_,{receiverId},{userId})=>{
+      if(!userId) throw new ForbiddenError("You must be logged in")
+      const messages =  await prisma.message.findMany({
+        where:{
+          OR:[
+            {senderId:userId, receiverId:receiverId},
+            {senderId:receiverId,receiverId:userId}
+          ]
         },
-        orderBy: {
-          createdAt: "asc",
-        },
-      });
-
-      return messages;
-    },
+        orderBy:{
+          createdAt:"asc"
+        }
+      })
+      return messages
+    }
   },
 
   Mutation: {
@@ -118,25 +101,15 @@ const resolvers = {
       return { token };
     },
 
-    createMessage: async (
-      _,
-      { receiverId, text },
-      { authorization }
-    ) => {
-      if (!authorization)
-        throw new ForbiddenError("You must be logged in");
-
-      const { userId } = JSON.parse(
-        atob(authorization.split(".")[1])
-      );
-
-      const message = await prisma.message.create({
-        data: {
+    createMessage:async (_,{receiverId,text},{userId})=>{
+      if(!userId) throw new ForbiddenError("You must be logged in")
+      const message =  await prisma.message.create({
+        data:{
           text,
           receiverId,
-          senderId: userId,
-        },
-      });
+          senderId:userId
+        }
+      })
 
       pubsub.publish(MESSAGE_ADDED,{messageAdded:message})
 
