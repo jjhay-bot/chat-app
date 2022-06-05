@@ -5,9 +5,14 @@ import {
   ForbiddenError,
 } from "apollo-server";
 import bcrypt from "bcrypt";
+import { PubSub } from "graphql-subscriptions";
 import jwt from "jsonwebtoken";
 
+const pubsub = new PubSub();
+
 const prisma = new PrismaClient();
+
+const MESSAGE_ADDED = "MESSAGE_ADDED";
 
 const resolvers = {
   Query: {
@@ -30,6 +35,7 @@ const resolvers = {
           },
         },
       });
+
       return users;
     },
 
@@ -56,7 +62,6 @@ const resolvers = {
 
       return messages;
     },
-
   },
 
   Mutation: {
@@ -137,7 +142,15 @@ const resolvers = {
         },
       });
 
+      pubsub.publish(MESSAGE_ADDED, { messageAdded: message });
+
       return message;
+    },
+  },
+
+  Subscription: {
+    messageAdded: {
+      subscribe: () => pubsub.asyncIterator(MESSAGE_ADDED),
     },
   },
 };
