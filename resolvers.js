@@ -11,10 +11,15 @@ const prisma = new PrismaClient();
 
 const resolvers = {
   Query: {
-    users: async (_, args, { userId }) => {
+    users: async (_, args, { authorization }) => {
+      const { userId } = JSON.parse(
+        atob(authorization.split(".")[1])
+      );
+
       if (!userId) {
         throw new ForbiddenError("You must be logged in.");
       }
+
       const users = await prisma.user.findMany({
         orderBy: {
           createdAt: "desc",
@@ -28,22 +33,30 @@ const resolvers = {
       return users;
     },
 
-    messagesByUser:async (_,{receiverId},{userId})=>{
-      console.log(userId);
-      // if(!userId) throw new ForbiddenError("You must be logged in")
-      // const messages =  await prisma.message.findMany({
-      //   where:{
-      //     OR:[
-      //       {senderId:userId, receiverId:receiverId},
-      //       {senderId:receiverId,receiverId:userId}
-      //     ]
-      //   },
-      //   orderBy:{
-      //     createdAt:"asc"
-      //   }
-      // })
-      // return messages
-    }
+    messagesByUser: async (_, { receiverId }, { authorization }) => {
+      const { userId } = JSON.parse(
+        atob(authorization.split(".")[1])
+      );
+
+      if (!userId) {
+        throw new ForbiddenError("You must be logged in.");
+      }
+
+      const messages = await prisma.message.findMany({
+        where: {
+          OR: [
+            { senderId: userId, receiverId: receiverId },
+            { senderId: receiverId, receiverId: userId },
+          ],
+        },
+        orderBy: {
+          createdAt: "asc",
+        },
+      });
+
+      return messages;
+    },
+
   },
 
   Mutation: {
